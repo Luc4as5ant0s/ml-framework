@@ -1,61 +1,38 @@
-interface NN {
-  ws: matrix[]
-  bs: matrix[]
-  as: matrix[]
-  layers: number
-  architecture: number[]
-}
-
-type matrix = {
+type Matrix = {
   rows: number
   cols: number
-  data: Array<number>
+  data: number[]
 }
 
-const ins = [
-  [0, 0],
-  [0, 1],
-  [1, 0],
-  [1, 1],
-]
-
-const outs = [[0], [1], [1], [0]]
+type NN = {
+  layers: number
+  architecture: number[]
+  as: Matrix[]
+  ws: Matrix[]
+  bs: Matrix[]
+}
 
 function sigmoid(x: number): number {
   return 1 / (1 + Math.E ** -x)
 }
 
-function randArray(length: number, min: number, max: number): Array<number> {
-  const arr: number[] = [];
-  for (let i = 0; i < length; i++) {
-    arr.push(Math.random() * (max - min) + min);
-  }
-  return arr;
-}
-
-function zeroArray(length: number): Array<number> {
-  return Array.from({ length }, () => 0)
-}
-
-export function fillRand(nn: NN) {
-  let l = nn.layers
-  let w = nn.ws
-  let b = nn.bs
-  for (let i = 0; i < l - 1; i++) {
-    nn.ws[i].data = randArray(w[i].rows * w[i].cols, -1, 1)
-    nn.bs[i].data = randArray(b[i].rows * b[i].cols, -1, 1)
+function createMatrix(rows: number, cols: number, value: number = 0): Matrix {
+  return {
+    rows,
+    cols,
+    data: Array(rows * cols).fill(value),
   }
 }
 
-function at(mat: matrix, row: number, col: number) {
-  return row * mat.cols + col
+function randomMatrix(rows: number, cols: number): Matrix {
+  return {
+    rows,
+    cols,
+    data: Array.from({ length: rows * cols }, () => Math.random() * 2 - 1),
+  }
 }
 
-function matAt(mat: matrix, row: number, col: number) {
-  return mat.data[at(mat, row, col)]
-}
-
-function multiplyMatrix(a: matrix, b: matrix, dst: matrix): void {
+function multiplyMatrix(a: Matrix, b: Matrix, dst: Matrix): void {
   if (a.cols !== b.rows) throw Error("Columns should equal rows")
   if (dst.rows !== a.rows) throw Error("Dst rows differ")
   if (dst.cols !== b.cols) throw Error("Dst cols differ")
@@ -70,7 +47,7 @@ function multiplyMatrix(a: matrix, b: matrix, dst: matrix): void {
   }
 }
 
-function sumMatrix(a: matrix, b: matrix) {
+function sumMatrix(a: Matrix, b: Matrix) {
   for (let i = 0; i < a.rows; i++) {
     for (let j = 0; j < a.cols; j++) {
       a.data[at(a, i, j)] += matAt(b, i, j)
@@ -78,7 +55,7 @@ function sumMatrix(a: matrix, b: matrix) {
   }
 }
 
-function activateMatrix(matrix: matrix) {
+function activateMatrix(matrix: Matrix) {
   for (let i = 0; i < matrix.rows; i++) {
     for (let j = 0; j < matrix.cols; j++) {
       matrix.data[at(matrix, i, j)] = sigmoid(matAt(matrix, i, j))
@@ -86,93 +63,76 @@ function activateMatrix(matrix: matrix) {
   }
 }
 
-export function initNN(layers: number[]): NN {
-  const nn: NN = {
-    as: [],
-    ws: [],
-    bs: [],
-    layers: 0,
-    architecture: [],
-  }
-  nn.as[0] = {
-    rows: 1,
-    cols: layers[0],
-    data: zeroArray(layers[0]),
-  }
-  for (let i = 1; i < layers.length; i++) {
-    nn.ws[i - 1] = {
-      rows: nn.as[i - 1].cols,
-      cols: layers[i],
-      data: zeroArray(nn.as[i - 1].cols * layers[i]),
-    }
-    nn.bs[i - 1] = {
-      rows: 1,
-      cols: layers[i],
-      data: zeroArray(layers[i]),
-    }
-    nn.as[i] = {
-      rows: 1,
-      cols: layers[i],
-      data: zeroArray(layers[i]),
-    }
-  }
-  nn.layers = layers.length
-  nn.architecture = layers
-  return nn
+function matAt(m: Matrix, row: number, col: number): number {
+  return m.data[row * m.cols + col]
 }
 
-function printMatrix(matrix: matrix): void {
-  console.log("   [")
-  for (let i = 0; i < matrix.rows; i++) {
-    let str = "     "
-    for (let j = 0; j < matrix.cols; j++) {
-      str += `${matrix.data[at(matrix, i, j)]}, `
-    }
-    console.log(str)
-  }
-  console.log("   ]\n")
+function at(mat: Matrix, row: number, col: number) {
+  return row * mat.cols + col
 }
 
-export function printNN(nn: NN): void {
-  for (let i = 0; i < nn.layers - 1; i++) {
-    console.log("Layer", i + 1)
-    console.log(" ws: ")
-    printMatrix(nn.ws[i])
-    console.log(" bs: ")
-    printMatrix(nn.bs[i])
-  }
-}
-
-function getCost(nn: NN, ins: number[][], outs: number[][]): number {
-  let cost = 0
-  ins.forEach((input: number[], index: number) => {
-    forward(nn, input)
-    outs[index].forEach((output: number, outIndex) => {
-      cost += (nn.as[nn.as.length - 1].data[outIndex] - output) ** 2
-    })
-  })
-  return cost / ins.length
-}
-
-export function forward(nn: NN, input: number[]) {
+export function forward(nn: NN, input: number[]): number[] {
   nn.as[0].data = input
   for (let i = 0; i < nn.layers - 1; i++) {
     multiplyMatrix(nn.as[i], nn.ws[i], nn.as[i + 1])
     sumMatrix(nn.as[i + 1], nn.bs[i])
     activateMatrix(nn.as[i + 1])
   }
+  return nn.as[nn.layers - 1].data
 }
 
-export function finiteDiff(nn: NN, ins: number[][], outs: number[][], eps: number = 1e-3): NN {
-  const g: NN = initNN(nn.architecture)
+function zeroArray(length: number): number[] {
+  return Array(length).fill(0)
+}
+
+export function initNN(architecture: number[]): NN {
+  const layers = architecture.length
+  const as = architecture.map((layer) => createMatrix(1, layer))
+  const ws = architecture
+    .slice(0, -1)
+    .map((layer, i) => randomMatrix(layer, architecture[i + 1]))
+  const bs = architecture.slice(1).map((layer) => createMatrix(1, layer))
+  return { layers, architecture, as, ws, bs }
+}
+
+function zeroNN(architecture: number[]): NN {
+  const layers = architecture.length
+  const as = architecture.map((layer) => createMatrix(1, layer))
+  const ws = architecture
+    .slice(0, -1)
+    .map((layer, i) => createMatrix(layer, architecture[i + 1]))
+  const bs = architecture.slice(1).map((layer) => createMatrix(1, layer))
+  return { layers, architecture, as, ws, bs }
+}
+
+function getCost(nn: NN, ins: number[][], outs: number[][]): number {
+  return (
+    ins.reduce((sum, input, i) => {
+      const output = forward(nn, input)
+      const target = outs[i]
+      return (
+        sum +
+        output.reduce((cost, out, j) => {
+          return cost + (out - target[j]) ** 2
+        }, 0)
+      )
+    }, 0) / ins.length
+  )
+}
+
+export function numGrad(nn: NN, ins: number[][], outs: number[][]): NN {
+  const eps = 1e-4
+  const g = initNN(nn.architecture)
   const cost = getCost(nn, ins, outs)
+
   for (let i = 0; i < nn.layers - 1; i++) {
     for (let j = 0; j < nn.ws[i].rows; j++) {
       for (let k = 0; k < nn.ws[i].cols; k++) {
         const saved = matAt(nn.ws[i], j, k)
-        nn.ws[i].data[at(nn.ws[i], j, k)] += eps
-        g.ws[i].data[at(g.ws[i], j, k)] = (getCost(nn, ins, outs) - cost) / eps
-        nn.ws[i].data[at(nn.ws[i], j, k)] = saved
+        nn.ws[i].data[j * nn.ws[i].cols + k] += eps
+        g.ws[i].data[j * g.ws[i].cols + k] =
+          (getCost(nn, ins, outs) - cost) / eps
+        nn.ws[i].data[j * nn.ws[i].cols + k] = saved
       }
     }
 
@@ -183,32 +143,39 @@ export function finiteDiff(nn: NN, ins: number[][], outs: number[][], eps: numbe
       nn.bs[i].data[k] = saved
     }
   }
+
   return g
 }
 
 export function backprop(nn: NN, ins: number[][], outs: number[][]): NN {
-  const g = initNN(nn.architecture)
-  ins.forEach((input: number[], i: number) => {
+  const g = zeroNN(nn.architecture)
+  let cost = 0
+  ins.forEach((input, i) => {
     const out = outs[i]
     forward(nn, input)
 
-    nn.architecture.forEach((layer: number, j) => {
+    nn.architecture.forEach((layer, j) => {
       g.as[j].data = zeroArray(layer)
     })
-    out.forEach((output: number, j: number) => {
-      g.as[nn.layers - 1].data[j] = (nn.as[nn.layers - 1].data[j] - output)
+
+    out.forEach((output, j) => {
+      const diff = nn.as[nn.layers - 1].data[j] - output
+      g.as[nn.layers - 1].data[j] = diff
+      cost += diff ** 2
+      g.as[nn.layers - 1].data[j] = nn.as[nn.layers - 1].data[j] - output
     })
 
     for (let l = nn.layers - 1; l > 0; l--) {
-      nn.as[l].data.forEach((a: number, j: number) => {
+      nn.as[l].data.forEach((a, j) => {
         const da = g.as[l].data[j]
         const dactf = a * (1 - a)
-        g.bs[l - 1].data[j] += 2*da * dactf
+        g.bs[l - 1].data[j] += 2 * da * dactf
+
         for (let k = 0; k < nn.as[l - 1].cols; k++) {
           const prevAct = nn.as[l - 1].data[k]
           const prevW = matAt(nn.ws[l - 1], k, j)
-          g.ws[l - 1].data[at(g.ws[l-1], k, j)] += 2*da * dactf * prevAct
-          g.as[l - 1].data[k] += 2*da * dactf * prevW
+          g.ws[l - 1].data[k * g.ws[l - 1].cols + j] += 2 * da * dactf * prevAct
+          g.as[l - 1].data[k] += 2 * da * dactf * prevW
         }
       })
     }
@@ -217,14 +184,15 @@ export function backprop(nn: NN, ins: number[][], outs: number[][]): NN {
   for (let i = 0; i < g.layers - 1; i++) {
     for (let j = 0; j < g.ws[i].rows; j++) {
       for (let k = 0; k < g.ws[i].cols; k++) {
-        g.ws[i].data[at(g.ws[i], j, k)] /= ins.length
+        g.ws[i].data[j * g.ws[i].cols + k] /= ins.length
       }
     }
+
     for (let k = 0; k < g.bs[i].cols; k++) {
       g.bs[i].data[k] /= ins.length
     }
   }
-
+  console.log(cost / ins.length)
   return g
 }
 
@@ -243,4 +211,36 @@ export function learn(nn: NN, g: NN, rate: number = 1) {
   }
 }
 
+export function printNN(nn: NN) {
+  console.log("Neural Network Structure:")
+  console.log("Layers:", nn.layers)
+  console.log("Architecture:", nn.architecture)
 
+  console.log("\nActivations (as):")
+  nn.as.forEach((matrix, index) => {
+    console.log(` Layer ${index}:`, matrix)
+  })
+
+  console.log("\nWeights (ws):")
+  nn.ws.forEach((matrix, index) => {
+    console.log(` Layer ${index + 1} Weights:`)
+    console.log(`  [`)
+    for (let i = 0; i < matrix.rows; i++) {
+      let row: string[] = []
+      for (let j = 0; j < matrix.cols; j++) {
+        row.push(matAt(matrix, i, j).toFixed(4) + ",")
+      }
+      console.log("   ", row.join(" "))
+    }
+    console.log(`  ]`)
+  })
+
+  console.log("\nBiases (bs):")
+  nn.bs.forEach((matrix, index) => {
+    let biases: string[] = []
+    for (let i = 0; i < matrix.cols; i++) {
+      biases.push(matrix.data[i].toFixed(4))
+    }
+    console.log(` Layer ${index + 1} Biases: [${biases.join(", ")}]`)
+  })
+}
