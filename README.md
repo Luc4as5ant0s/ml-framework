@@ -28,7 +28,7 @@ This project contains a basic implementation of a neural network in TypeScript. 
 
 3. Run the TypeScript file:
     ```sh
-    npx ts-node neural.ts
+    npx ts-node src/logic-gates.ts
     ```
 
 ## Example
