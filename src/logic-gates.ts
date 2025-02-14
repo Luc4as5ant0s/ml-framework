@@ -9,7 +9,7 @@ const ins = [
 const outs = [[0], [1], [1], [0]]
 
 function runModel() {
-  const nn = initNN([2, 2, 1])
+  const nn = initNN([2, 4, 1])
   for (let i = 0; i < 10000; i++) {
     const g = backprop(nn, ins, outs)
     learn(nn, g)
