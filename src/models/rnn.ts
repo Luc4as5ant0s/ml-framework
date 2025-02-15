@@ -1,14 +1,15 @@
 import { SimpleRNN } from "../layers/recurrent";
-import { Dense } from "../layers/dense";
+import { Dense, identity, dIdentity } from "../layers/dense";
 import { BaseModel } from "./model.abstract";
 
 export class RNNModel extends BaseModel {
   private rnnLayer: SimpleRNN;
   private denseLayer: Dense;
+
   constructor(inputSize: number, hiddenSize: number, outputSize: number) {
     super();
     this.rnnLayer = new SimpleRNN(inputSize, hiddenSize);
-    this.denseLayer = new Dense(hiddenSize, outputSize);
+    this.denseLayer = new Dense(hiddenSize, outputSize, identity, dIdentity);
   }
 
   forward(sequence: number[][]): number[][] {

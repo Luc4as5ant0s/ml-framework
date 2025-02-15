@@ -25,8 +25,8 @@ const outputSize = 1
 
 const rnn = new RNNModel(inputSize, hiddenSize, outputSize)
 
-const learningRate = 0.001
-const epochs = 1400
+const learningRate = 0.0006
+const epochs = 200000
 
 for (let epoch = 0; epoch < epochs; epoch++) {
   let epochLoss = 0

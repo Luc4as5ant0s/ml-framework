@@ -17,3 +17,10 @@ export function initializeMatrix(rows: number, cols: number, initFunc: () => num
 export function initializeVector(size: number, initFunc: () => number = () => Math.random() * 0.1): number[] {
   return Array.from({ length: size }, initFunc);
 }
+
+export function clipValue(val: number, threshold: number): number {
+  if (Math.abs(val) > threshold) {
+    return Math.sign(val) * threshold;
+  }
+  return val;
+}
