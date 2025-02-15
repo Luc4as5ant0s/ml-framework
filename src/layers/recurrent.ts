@@ -47,9 +47,7 @@ export class SimpleRNN implements ILayer {
   forward(sequence: number[][]): number[][] {
     this.lastInputs = []
     this.lastHiddenStates = []
-    console.log(this.inputWeights)
-    console.log(this.recurrentWeights)
-    console.log(this.biases)
+    this.hiddenState = Array(this.hiddenSize).fill(0);
     const outputs: number[][] = []
     for (let t = 0; t < sequence.length; t++) {
       const input = sequence[t]
