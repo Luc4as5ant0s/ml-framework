@@ -1,4 +1,19 @@
 import { RNNModel } from "./models/rnn"
+import * as fs from "fs";
+import * as path from "path";
+
+const modelPath = path.join(__dirname, "best_model.json");
+let bestLoss = Number.POSITIVE_INFINITY;
+
+if (fs.existsSync(modelPath)) {
+  try {
+    const saved = JSON.parse(fs.readFileSync(modelPath, "utf-8"));
+    bestLoss = saved.bestLoss;
+    console.log(`Loaded best loss: ${bestLoss}`);
+  } catch (error) {
+    console.error("Failed to load saved model, starting fresh.");
+  }
+}
 
 function generateData(numSamples: number, sequenceLength: number) {
   const data: { sequence: number[][]; target: number[][] }[] = []
@@ -26,7 +41,7 @@ const outputSize = 1
 const rnn = new RNNModel(inputSize, hiddenSize, outputSize)
 
 const learningRate = 0.0006
-const epochs = 200000
+const epochs = 2000
 
 for (let epoch = 0; epoch < epochs; epoch++) {
   let epochLoss = 0
@@ -37,6 +52,17 @@ for (let epoch = 0; epoch < epochs; epoch++) {
   epochLoss /= numSamples
   if (epoch % 20 === 0) {
     console.log(`Epoch ${epoch}: Loss = ${epochLoss.toFixed(4)}`)
+  }
+  if (epochLoss < bestLoss) {
+    console.log(`New best loss achieved: ${epochLoss}. Saving model.`);
+    const checkpoint = {
+      bestLoss: epochLoss,
+      model: rnn.serialize(),
+    };
+    bestLoss = epochLoss
+    fs.writeFileSync(modelPath, JSON.stringify(checkpoint, null, 2), "utf-8");
+  } else {
+    console.log(`Best loss remains: ${bestLoss}. Model not updated.`);
   }
 }
 

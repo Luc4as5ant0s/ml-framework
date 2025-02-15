@@ -120,4 +120,16 @@ export class Dense implements ILayer {
 
     return dInput
   }
+
+  serialize(): any {
+    return {
+      weights: this.weights,
+      biases: this.biases
+    }
+  }
+
+  load(serialized: any): void {
+    this.weights = serialized.weights,
+    this.biases = serialized.biases
+  }
 }

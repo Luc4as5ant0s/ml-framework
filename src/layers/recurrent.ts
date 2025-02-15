@@ -1,17 +1,17 @@
-// src/layers/recurrent.ts
+
 import { ILayer } from "./layer.interface"
 import { tanh } from "../utils/activation"
 import { clipValue } from "../utils/math"
 
 export class SimpleRNN implements ILayer {
-  private inputWeights: number[][] // [hiddenSize x inputSize]
-  private recurrentWeights: number[][] // [hiddenSize x hiddenSize]
-  private biases: number[] // [hiddenSize]
+  private inputWeights: number[][] 
+  private recurrentWeights: number[][] 
+  private biases: number[] 
   private hiddenState: number[]
   private lastInputs: number[][] = []
   private lastHiddenStates: number[][] = []
 
-  // Adam-specific parameters:
+  
   private adamT: number = 0
   private beta1: number = 0.9
   private beta2: number = 0.999
@@ -28,7 +28,6 @@ export class SimpleRNN implements ILayer {
     this.recurrentWeights = this.initializeMatrix(hiddenSize, hiddenSize)
     this.biases = this.initializeVector(hiddenSize)
     this.hiddenState = Array(hiddenSize).fill(0)
-    // Initialize Adam moment estimates as zero.
     this.mInputWeights = this.initializeMatrix(hiddenSize, inputSize, () => 0)
     this.vInputWeights = this.initializeMatrix(hiddenSize, inputSize, () => 0)
     this.mRecurrentWeights = this.initializeMatrix(
@@ -48,6 +47,9 @@ export class SimpleRNN implements ILayer {
   forward(sequence: number[][]): number[][] {
     this.lastInputs = []
     this.lastHiddenStates = []
+    console.log(this.inputWeights)
+    console.log(this.recurrentWeights)
+    console.log(this.biases)
     const outputs: number[][] = []
     for (let t = 0; t < sequence.length; t++) {
       const input = sequence[t]
@@ -87,25 +89,25 @@ export class SimpleRNN implements ILayer {
     )
     let dHiddenNext = Array(this.hiddenSize).fill(0)
 
-    // Backpropagation Through Time.
+    
     for (let t = T - 1; t >= 0; t--) {
       const dTotal = dOut[t].map((val, i) => val + dHiddenNext[i])
       const dTanh = this.lastHiddenStates[t].map((h) => 1 - h * h)
       const dPre = dTotal.map((val, i) =>
         clipValue(val * dTanh[i], clipThreshold)
       )
-      // Accumulate gradients for biases.
+      
       for (let i = 0; i < this.hiddenSize; i++) {
         dBiases[i] += dPre[i]
       }
-      // Gradients for inputWeights.
+      
       const input = this.lastInputs[t]
       for (let i = 0; i < this.hiddenSize; i++) {
         for (let j = 0; j < this.inputSize; j++) {
           dInputWeights[i][j] += dPre[i] * input[j]
         }
       }
-      // Gradients for recurrentWeights.
+      
       const prevHidden =
         t > 0 ? this.lastHiddenStates[t - 1] : Array(this.hiddenSize).fill(0)
       for (let i = 0; i < this.hiddenSize; i++) {
@@ -113,7 +115,7 @@ export class SimpleRNN implements ILayer {
           dRecurrentWeights[i][j] += dPre[i] * prevHidden[j]
         }
       }
-      // Compute gradient with respect to the input at time t.
+      
       for (let j = 0; j < this.inputSize; j++) {
         let sum = 0
         for (let i = 0; i < this.hiddenSize; i++) {
@@ -121,7 +123,7 @@ export class SimpleRNN implements ILayer {
         }
         dInputs[t][j] = sum
       }
-      // Propagate gradient to the previous hidden state.
+      
       dHiddenNext = Array(this.hiddenSize).fill(0)
       for (let j = 0; j < this.hiddenSize; j++) {
         let sum = 0
@@ -132,7 +134,7 @@ export class SimpleRNN implements ILayer {
       }
     }
 
-    // Adam update for inputWeights, recurrentWeights, and biases.
+    
     this.adamT++
     for (let i = 0; i < this.hiddenSize; i++) {
       for (let j = 0; j < this.inputSize; j++) {
@@ -178,7 +180,20 @@ export class SimpleRNN implements ILayer {
     return dInputs
   }
 
-  // Helper methods.
+  serialize(): any {
+    return {
+      inputWeights: this.inputWeights,
+      recurrentWeights: this.recurrentWeights,
+      biases: this.biases,
+    }
+  }
+
+  load(serialized: any): void {
+    this.inputWeights = serialized.inputWeights
+    ;(this.recurrentWeights = serialized.recurrentWeights),
+      (this.biases = serialized.biases)
+  }
+
   private initializeMatrix(
     rows: number,
     cols: number,
